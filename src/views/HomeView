@@ -1,0 +1,278 @@
+<template>
+  <v-container class="pa-6">
+    <v-stepper v-model="step">
+      <!-- HEADER -->
+      <v-stepper-header>
+        <v-stepper-item :value="1" title="Identity" />
+        <v-stepper-item :value="2" title="Address" />
+        <v-stepper-item :value="3" title="Promoters" />
+        <v-stepper-item :value="4" title="Bank" />
+        <v-stepper-item :value="5" title="Trading" />
+        <v-stepper-item :value="6" title="Additional / Investment" />
+      </v-stepper-header>
+
+      <!-- CONTENT -->
+      <v-stepper-window>
+        <!-- STEP 1 – Identity -->
+        <v-stepper-window-item :value="1">
+          <v-form ref="form1">
+            <v-card class="pa-4" outlined>
+              <v-text-field
+                v-model="form.name"
+                label="Name of Applicant"
+                :rules="[rules.required]"
+              />
+              <v-text-field
+                v-model="form.incorporationDate"
+                type="date"
+                label="Incorporation Date"
+                :rules="[rules.required]"
+              />
+              <v-text-field
+                v-model="form.incorporationPlace"
+                label="Incorporation Place"
+                :rules="[rules.required]"
+              />
+              <v-text-field
+                v-model="form.registrationNo"
+                label="Registration No / PAN"
+                :rules="[rules.required, rules.pan]"
+              />
+              <v-select
+                v-model="form.status"
+                :items="statuses"
+                item-title="label"
+                item-value="value"
+                label="Status"
+                :rules="[rules.required]"
+              />
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4" color="primary" @click="validateStep(1, 'identity')"> Next </v-btn>
+        </v-stepper-window-item>
+
+        <!-- STEP 2 – Address -->
+        <v-stepper-window-item :value="2">
+          <v-form ref="form2">
+            <v-card class="pa-4" outlined>
+              <v-text-field
+                v-model="form.correspondenceAddress"
+                label="Correspondence Address"
+                :rules="[rules.required]"
+              />
+              <v-text-field v-model="form.city" label="City" :rules="[rules.required]" />
+              <v-text-field
+                v-model="form.pincode"
+                label="Pincode"
+                :rules="[rules.required, rules.pincode]"
+              />
+              <v-text-field v-model="form.state" label="State" :rules="[rules.required]" />
+              <v-text-field v-model="form.country" label="Country" :rules="[rules.required]" />
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4 mr-2" @click="prevStep">Back</v-btn>
+          <v-btn class="mt-4" color="primary" @click="validateStep(2, 'address')">Next</v-btn>
+        </v-stepper-window-item>
+
+        <!-- STEP 3 – Promoters -->
+        <v-stepper-window-item :value="3">
+          <v-form ref="form3">
+            <v-card class="pa-4" outlined>
+              <v-btn color="primary" @click="addPromoter">Add Promoter</v-btn>
+
+              <div class="mt-4" v-for="(p, i) in form.promoters" :key="i">
+                <v-text-field v-model="p.name" label="Full Name" :rules="[rules.required]" />
+                <v-text-field v-model="p.pan" label="PAN" :rules="[rules.required, rules.pan]" />
+                <v-text-field v-model="p.din" label="DIN" :rules="[rules.required]" />
+                <v-text-field
+                  v-model="p.aadhar"
+                  label="Aadhar"
+                  :rules="[rules.required, rules.aadhar]"
+                />
+
+                <v-btn color="red" @click="removePromoter(i)">Remove</v-btn>
+                <v-divider class="my-4" />
+              </div>
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4 mr-2" @click="prevStep">Back</v-btn>
+          <v-btn class="mt-4" color="primary" @click="validateStep(3, 'promoters')">Next</v-btn>
+        </v-stepper-window-item>
+
+        <!-- STEP 4 – Bank -->
+        <v-stepper-window-item :value="4">
+          <v-form ref="form4">
+            <v-card class="pa-4" outlined>
+              <v-text-field v-model="form.bankName" label="Bank Name" :rules="[rules.required]" />
+              <v-text-field v-model="form.accountNo" label="Account No" :rules="[rules.required]" />
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4 mr-2" @click="prevStep">Back</v-btn>
+          <v-btn class="mt-4" color="primary" @click="validateStep(4, 'bank')">Next</v-btn>
+        </v-stepper-window-item>
+
+        <!-- STEP 5 – Trading -->
+        <v-stepper-window-item :value="5">
+          <v-form ref="form5">
+            <v-card class="pa-4" outlined>
+              <v-checkbox label="NSE" v-model="form.nse" />
+              <v-checkbox label="BSE" v-model="form.bse" />
+              <v-checkbox label="MCX" v-model="form.mcx" />
+              <v-checkbox label="NCDEX" v-model="form.ncdex" />
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4 mr-2" @click="prevStep">Back</v-btn>
+          <v-btn class="mt-4" color="primary" @click="validateStep(5, 'trading')">Next</v-btn>
+        </v-stepper-window-item>
+
+        <!-- STEP 6 – Additional -->
+        <v-stepper-window-item :value="6">
+          <v-form ref="form6">
+            <v-card class="pa-4" outlined>
+              <v-radio-group v-model="form.contractNotePhysical" row>
+                <v-radio label="Physical" :value="true" />
+                <v-radio label="Electronic" :value="false" />
+              </v-radio-group>
+
+              <v-text-field
+                v-if="!form.contractNotePhysical"
+                v-model="form.contractNoteEmail"
+                label="Email"
+                :rules="[rules.required, rules.email]"
+              />
+            </v-card>
+          </v-form>
+
+          <v-btn class="mt-4 mr-2" @click="prevStep">Back</v-btn>
+          <v-btn class="mt-4" color="green" @click="validateStep(6, 'additional')">
+            Finish & Download
+          </v-btn>
+        </v-stepper-window-item>
+      </v-stepper-window>
+    </v-stepper>
+  </v-container>
+</template>
+
+<script>
+import kycService from '../services/Eventservice'
+
+export default {
+  data() {
+    return {
+      step: 1,
+      statuses: [
+        { label: 'Active', value: 'Active' },
+        { label: 'Inactive', value: 'Inactive' },
+        { label: 'Pending', value: 'Pending' },
+      ],
+
+      rules: {
+        required: (v) => !!v || 'This field is required',
+        email: (v) => /.+@.+\..+/.test(v) || 'Invalid email',
+        pan: (v) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v) || 'Invalid PAN',
+        aadhar: (v) => /^[0-9]{12}$/.test(v) || 'Invalid Aadhar',
+        pincode: (v) => /^[0-9]{6}$/.test(v) || 'Invalid pincode',
+      },
+
+      form: {
+        name: '',
+        incorporationDate: '',
+        incorporationPlace: '',
+        registrationNo: '',
+        status: '',
+        correspondenceAddress: '',
+        city: '',
+        pincode: '',
+        state: '',
+        country: '',
+        promoters: [],
+        bankName: '',
+        accountNo: '',
+        nse: false,
+        bse: false,
+        mcx: false,
+        ncdex: false,
+        contractNotePhysical: true,
+        contractNoteEmail: '',
+      },
+    }
+  },
+
+  methods: {
+    prevStep() {
+      if (this.step > 1) this.step--
+    },
+
+    addPromoter() {
+      this.form.promoters.push({ name: '', pan: '', din: '', aadhar: '' })
+    },
+
+    removePromoter(i) {
+      this.form.promoters.splice(i, 1)
+    },
+
+    async validateStep(stepNumber, apiName) {
+      const formRef = this.$refs[`form${stepNumber}`]
+
+      const result = await formRef.validate()
+
+      // Must check result.valid (not result)
+      if (!result.valid) {
+        console.log('❌ Validation failed for step', stepNumber)
+        return
+      }
+
+      this.saveStep(apiName)
+    },
+
+    async saveStep(stepName) {
+      let res = null
+
+      switch (stepName) {
+        case 'identity':
+          res = await kycService.saveIdentity(this.form)
+          break
+        case 'address':
+          res = await kycService.saveAddress(this.form)
+          break
+        case 'promoters':
+          res = await kycService.savePromoters(this.form.promoters)
+          break
+        case 'bank':
+          res = await kycService.saveBank(this.form)
+          break
+        case 'trading':
+          res = await kycService.saveTrading(this.form)
+          break
+        case 'additional':
+          res = await kycService.saveAdditional(this.form)
+          break
+      }
+
+      if (res.success) {
+        if (stepName === 'additional') {
+          alert('KYC Completed!')
+          this.downloadForm()
+          this.step = 1
+        } else {
+          this.step++
+        }
+      }
+    },
+
+    downloadForm() {
+      const dataStr =
+        'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.form, null, 2))
+      const dl = document.createElement('a')
+      dl.href = dataStr
+      dl.download = 'KYC_Form.json'
+      dl.click()
+    },
+  },
+}
+</script>
