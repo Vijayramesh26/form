@@ -1,87 +1,154 @@
 <template>
-  <v-container class="pa-6">
-    <v-card class="pa-4 mb-4">
-      <v-row align="center">
-        <v-col cols="12" md="6">
-          <v-select
-            v-model="selectedType"
-            :items="types"
-            item-value="type_key"
-            item-title="label"
-            label="Choose KYC Type"
-            :rules="[requiredRule]"
-            @change="onTypeSelected"
-          />
-        </v-col>
-
-        <v-col cols="12" md="3" v-if="selectedTypeObj">
-          <v-card outlined class="pa-3">
-            <div><strong>Selected:</strong> {{ selectedTypeObj.label }}</div>
-            <div><strong>Fee:</strong> {{ selectedTypeObj.fee_amount }}</div>
-          </v-card>
-        </v-col>
-
-        <v-col cols="12" md="3" v-if="selectedType">
-          <v-btn color="primary" @click="beginKyc" :disabled="loading"> Start KYC </v-btn>
-        </v-col>
-      </v-row>
-    </v-card>
-
-    <!-- Stepper shown only after beginKyc success -->
-    <div v-if="stepOrder.length > 0">
-      <v-stepper v-model="step">
-        <v-stepper-header>
-          <v-stepper-item
-            v-for="(skey, idx) in stepOrder"
-            :key="skey"
-            :value="idx + 1"
-            :complete="idx + 1 < step"
+  <v-container fluid class="fill-height bg-grey-lighten-4 pa-0 pa-sm-4">
+    <v-row justify="center" align="start" class="ma-0 fill-height">
+      <v-col cols="12" md="8" lg="6" class="pa-0 pa-sm-4">
+        <v-fade-transition hide-on-leave>
+          <v-card
+            v-if="stepOrder.length === 0"
+            :flat="$vuetify.display.xs"
+            class="rounded-sm-lg pa-4 pa-sm-10 fill-height fill-height-sm-initial"
           >
-            {{ stepLabels[skey] || formatLabel(skey) }}
-          </v-stepper-item>
-        </v-stepper-header>
+            <div class="text-center mb-6">
+              <v-icon color="primary" size="48" class="mb-4">mdi-shield-check</v-icon>
+              <h1 class="text-h5 font-weight-bold">Identity Verification</h1>
+              <p class="text-body-2 text-medium-emphasis">Select a method to start</p>
+            </div>
 
-        <v-stepper-items>
-          <v-stepper-content v-for="(skey, idx) in stepOrder" :key="skey" :step="idx + 1">
-            <v-form :ref="getFormRef(skey)">
-              <v-card class="pa-4" outlined>
-                <h3>{{ stepLabels[skey] || formatLabel(skey) }}</h3>
+            <v-autocomplete
+              v-model="selectedType"
+              :items="types"
+              item-value="type_key"
+              item-title="label"
+              label="Verification Type"
+              variant="outlined"
+              density="comfortable"
+            />
 
-                <div v-for="field in fieldsByStep[skey] || []" :key="field.field_key" class="mb-3">
-                  <DynamicField :field="field" v-model="formModel[field.field_key]" />
+            <v-expand-transition>
+              <v-card
+                v-if="selectedTypeObj"
+                color="primary-lighten-5"
+                flat
+                class="pa-4 mb-6 rounded-lg"
+              >
+                <div class="d-flex justify-space-between align-center">
+                  <span class="text-subtitle-2 text-primary">Service Fee</span>
+                  <span class="text-h6 font-weight-bold text-primary"
+                    >${{ selectedTypeObj.fee_amount }}</span
+                  >
                 </div>
               </v-card>
-            </v-form>
+            </v-expand-transition>
 
-            <v-row class="mt-4">
-              <v-col>
-                <v-btn text @click="prevStep" v-if="idx + 1 > 1">Back</v-btn>
+            <v-btn
+              block
+              size="x-large"
+              color="primary"
+              variant="elevated"
+              :loading="loading"
+              @click="beginKyc"
+              class="rounded-pill"
+            >
+              Start Now
+            </v-btn>
+          </v-card>
+        </v-fade-transition>
 
-                <v-btn color="primary" class="ml-2" @click="next(idx + 1, skey)">
-                  {{ idx + 1 === stepOrder.length ? 'Proceed to Payment' : 'Next' }}
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-stepper-content>
-        </v-stepper-items>
-      </v-stepper>
-    </div>
+        <v-fade-transition>
+          <v-card
+            v-if="stepOrder.length > 0"
+            :flat="$vuetify.display.xs"
+            class="rounded-sm-lg overflow-hidden d-flex flex-column"
+            style="min-height: 100vh; min-height: -webkit-fill-available"
+          >
+            <v-progress-linear
+              :model-value="(step / stepOrder.length) * 100"
+              color="primary"
+              height="6"
+            />
 
-    <!-- Payment dialog (simple) -->
-    <v-dialog v-model="showPayment" max-width="500">
-      <v-card>
-        <v-card-title>Pay Fee</v-card-title>
-        <v-card-text>
-          <div><strong>Type:</strong> {{ selectedTypeObj?.label }}</div>
-          <div><strong>Amount:</strong> {{ selectedTypeObj?.fee_amount }}</div>
-          <v-btn color="primary" @click="confirmPayment">Pay (mock)</v-btn>
-        </v-card-text>
-        <v-card-actions><v-btn text @click="showPayment = false">Close</v-btn></v-card-actions>
-      </v-card>
-    </v-dialog>
+            <v-stepper v-model="step" flat class="bg-transparent">
+              <v-stepper-header class="elevation-0 border-b">
+                <template v-for="(skey, idx) in stepOrder" :key="skey">
+                  <v-stepper-item
+                    :value="idx + 1"
+                    :complete="step > idx + 1"
+                    :title="$vuetify.display.smAndUp ? stepLabels[skey] || formatLabel(skey) : ''"
+                  />
+                  <v-divider v-if="idx !== stepOrder.length - 1" :key="'d' + skey" />
+                </template>
+              </v-stepper-header>
+
+              <v-stepper-window v-model="step">
+                <v-stepper-window-item
+                  v-for="(skey, idx) in stepOrder"
+                  :key="skey"
+                  :value="idx + 1"
+                  class="pa-4 pa-sm-8"
+                >
+                  <v-form :ref="getFormRef(skey)">
+                    <div class="mb-6">
+                      <div class="text-overline text-primary mb-1">
+                        Step {{ idx + 1 }} of {{ stepOrder.length }}
+                      </div>
+                      <h2 class="text-h6 font-weight-bold">
+                        {{ stepLabels[skey] || formatLabel(skey) }}
+                      </h2>
+                    </div>
+
+                    <v-row>
+                      <v-col
+                        v-for="field in fieldsByStep[skey] || []"
+                        :key="field.field_key"
+                        cols="12"
+                        class="py-2"
+                      >
+                        <DynamicField
+                          :field="field"
+                          v-model="formModel[field.field_key]"
+                          variant="outlined"
+                          density="comfortable"
+                        />
+                      </v-col>
+                    </v-row>
+                  </v-form>
+
+                  <v-divider class="my-6 d-sm-none" />
+                  <div
+                    :class="[
+                      'd-flex mt-6 ga-3',
+                      $vuetify.display.xs ? 'flex-column' : 'justify-space-between',
+                    ]"
+                  >
+                    <v-btn
+                      :block="$vuetify.display.xs"
+                      size="large"
+                      variant="tonal"
+                      @click="prevStep"
+                      :disabled="step === 1"
+                      class="order-2 order-sm-1"
+                    >
+                      Back
+                    </v-btn>
+                    <v-btn
+                      :block="$vuetify.display.xs"
+                      size="large"
+                      color="primary"
+                      @click="next(idx + 1, skey)"
+                      class="order-1 order-sm-2"
+                    >
+                      {{ idx + 1 === stepOrder.length ? 'Finalize' : 'Continue' }}
+                    </v-btn>
+                  </div>
+                </v-stepper-window-item>
+              </v-stepper-window>
+            </v-stepper>
+          </v-card>
+        </v-fade-transition>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
-
 <script>
 import kycService from '@/services/Eventservice'
 import DynamicField from '@/components/DynamicField.vue'
@@ -117,6 +184,11 @@ export default {
       return (v) => !!v || 'Select a type'
     },
   },
+  watch: {
+    selectedType() {
+      this.onTypeSelected()
+    },
+  },
 
   mounted() {
     this.loadTypes()
@@ -130,7 +202,10 @@ export default {
     },
 
     onTypeSelected() {
-      this.selectedTypeObj = this.types.find((t) => t.type_key === this.selectedType) || null
+      this.selectedTypeObj =
+        this.types.find((t) => {
+          return t.type_key === this.selectedType
+        }) || null
     },
 
     async beginKyc() {
